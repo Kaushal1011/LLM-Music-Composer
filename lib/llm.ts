@@ -14,7 +14,7 @@ export async function getMelody(prompt: string) {
         },
         body: JSON.stringify({
             inputs: { "Music Type instructions": prompt },
-            version: "^1.3",
+            version: "^1.5",
         }),
     });
 
