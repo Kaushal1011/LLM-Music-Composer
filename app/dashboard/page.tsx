@@ -1,0 +1,94 @@
+"use client";
+
+import { Card } from "@/components/ui/card";
+import ChatLog from "@/components/chat/chatlog";
+import ChatInput from "@/components/chat/chatinput";
+import PianoRoll from "@/components/visualizer/PianoRoll";
+import { useState } from "react";
+import { playMelody, EventTuple } from "@/lib/synth";
+import { renderPresetSample } from "@/lib/music-utils";
+import { melodyToSMF } from "@/lib/midi-encode";
+
+type Msg = { role: "user" | "ai"; text: string };
+type MelodyJSON = [unknown, string, number, number][];
+
+export default function Dashboard() {
+    const [messages, setMessages] = useState<Msg[]>([]);
+    const [lastMelody, setLastMelody] = useState<EventTuple[] | null>(null);
+    const [lastPreset, setLastPreset] = useState<string | null>(null);
+
+    /* -------- core send ------------ */
+    const sendMsg = async (text: string) => {
+        setMessages((m) => [...m, { role: "user", text }]);
+        const res = await fetch("/api/llm", { method: "POST", body: JSON.stringify({ prompt: text }) });
+        const { melody, preset, reply }: { melody: MelodyJSON; preset: string; reply: string } =
+            await res.json();
+
+        setMessages((m) => [...m, { role: "ai", text: reply }]);
+
+        const seq = melody
+            .map(([, note, start, dur]) => [start as number, { note, dur }]) satisfies EventTuple[];
+        setLastMelody(seq);
+        setLastPreset(preset);
+        playMelody(seq, preset);
+    };
+
+    /* -------- new buttons ---------- */
+    const playAgain = () => lastMelody && lastPreset && playMelody(lastMelody, lastPreset);
+
+    const downloadMidi = () => {
+        if (!lastMelody) return;
+        const data = melodyToSMF(lastMelody);            // 👈 new helper
+        const url = URL.createObjectURL(
+            new Blob([data], { type: "audio/midi" })
+        );
+        const a = Object.assign(document.createElement("a"), {
+            href: url,
+            download: "melody.mid",
+        });
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const downloadSample = async () => {
+        if (!lastPreset) return;
+        const blob = await renderPresetSample(lastPreset);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${lastPreset}-C5.wav`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    /* -------- UI ------------------- */
+    return (
+        <>
+            {/* left – chat */}
+            <Card className="flex flex-col overflow-hidden max-w-md">
+                <ChatLog messages={messages} className="flex-1 overflow-y-auto p-4" />
+                <ChatInput onSend={sendMsg} />
+            </Card>
+
+            {/* right – visualizer + controls */}
+            <div className="flex-1 p-4">
+                <h2 className="font-semibold mb-2">Now playing 🎹</h2>
+
+                {lastMelody ? (
+                    <>
+                        <PianoRoll melody={lastMelody} />
+                        <div className="mt-3 flex gap-2">
+                            <button onClick={playAgain} className="btn">▶️ Play again</button>
+                            <button onClick={downloadMidi} className="btn">💾 MIDI</button>
+                            <button onClick={downloadSample} className="btn">🎤 C5 sample</button>
+                        </div>
+                    </>
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        Send a prompt to generate music.
+                    </p>
+                )}
+            </div>
+        </>
+    );
+}
