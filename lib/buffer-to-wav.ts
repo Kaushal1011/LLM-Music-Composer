@@ -10,6 +10,7 @@ export function bufferToWav(buf: AudioBuffer | ToneAudioBuffer): Uint8Array {
                 (_, ch) => buf.getChannelData(ch));      // native AudioBuffer
 
     const numCh = chans.length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sr = "sampleRate" in buf ? (buf as any).sampleRate : 44100;
     const frames = chans[0].length;
     const dataLen = frames * numCh * 2;                        // 16-bit
@@ -40,7 +41,7 @@ export function bufferToWav(buf: AudioBuffer | ToneAudioBuffer): Uint8Array {
     }
     return arr;
 }
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isTone(b: any): b is ToneAudioBuffer {
     return typeof b.toArray === "function";
 }

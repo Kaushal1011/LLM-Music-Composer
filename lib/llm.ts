@@ -25,6 +25,7 @@ export async function getMelody(prompt: string) {
     // ---- stream-aware parser ----
     const reader = res.body!.getReader();
     let buf = "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let final: any = null;
 
     while (true) {
@@ -60,7 +61,9 @@ export async function getMelody(prompt: string) {
     return {
         reply: final.Reply,
         preset: final.Preset,
+
         melody: final.Melody.map(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (n: any) => [Number(n.ID), n.NoteIdentifier, n.StartTime, n.Duration]
         ),
     };

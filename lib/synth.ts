@@ -95,3 +95,13 @@ export async function playMelody(melody: EventTuple[], preset = "SynthPad") {
 
     Tone.Transport.start();
 }
+
+export function stopMelody() {
+    currentPart?.dispose();
+    currentPart = null;
+
+    synth?.dispose();
+    synth = null;
+
+    Tone.Transport.stop();
+}
